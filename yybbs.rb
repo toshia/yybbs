@@ -27,6 +27,36 @@ Plugin.create(:yybbs) do
     end
   end
 
+  defspell(:compose, :yybbs) do |world, body:, **opts|
+    doc = URI.open("#{world.server.uri}?bbs=0", &Nokogiri::HTML.method(:parse))
+    str_crypt = doc.at_css('input[name="str_crypt"]').attribute('value').value
+    captcha_url = File.dirname(world.server.uri.to_s) + '/' + doc.at_css('img.capt').attribute('src').value.gsub(%r<\A./>, '')
+    captcha_photo = Plugin.filtering(:photo_filter, captcha_url, [])[1].first
+
+    dialog('投稿') {
+      label '以下の画像に表示されている数字を入力してください。'
+      link captcha_photo
+      input '画像認証', :captcha
+    }.next { |result|
+      sub, comment = body.split("\n", 2)
+      Net::HTTP.post_form(URI.parse("#{File.dirname(world.server.uri.to_s)}/regist.cgi"),
+                          { mode: 'regist',
+                            reno: '',
+                            bbs: '0',
+                            name: world.name || '',
+                            email: '',
+                            sub: sub,
+                            comment: comment,
+                            url: '',
+                            icon: world.icon_index || '0',
+                            pwd: world.password || '',
+                            captcha: result[:captcha],
+                            str_crypt: str_crypt,
+                            color: world.color || '0',
+                          })
+    }
+  end
+
   world_setting(:yybbs, "yybbs") do
     self[:url] = 'https://d250g2.com/yybbs/yybbs.cgi'
     self[:password] = SecureRandom.alphanumeric(rand(6..9))

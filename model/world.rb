@@ -5,14 +5,15 @@ module Plugin::YYBBS
     register :yybbs, name: "YYBBS"
 
     field.string :slug, required: true
+    field.string :name, required: true
+    field.string :password, required: true
+    field.string :icon_index, required: true
+    field.uri :icon_url, required: true
+    field.string :color, required: true
     field.uri :url, required: true
 
     def server
       Plugin::YYBBS::Server.new(uri: url)
-    end
-
-    def name
-      url.to_s
     end
 
     def icon
