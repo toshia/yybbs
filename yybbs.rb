@@ -12,7 +12,6 @@ Plugin.create(:yybbs) do
   end
 
   defspell(:around_message, :yybbs_message) do |message|
-    pp 'pass!!!'
     Thread.new do
       result = [message, message.thread].compact
     end

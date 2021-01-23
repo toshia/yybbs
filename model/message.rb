@@ -28,5 +28,15 @@ module Plugin::YYBBS
     def repliable?
       true
     end
+
+    def has_receive_message?
+      !!thread
+    end
+
+    def replyto_source_d(force = false)
+      Delayer::Deferred.new do
+        thread
+      end
+    end
   end
 end
