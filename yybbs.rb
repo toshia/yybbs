@@ -7,7 +7,7 @@ require_relative 'model/message'
 require 'nokogiri'
 
 Plugin.create(:yybbs) do
-  tab(:yybbs, "yybbs") do
+  tab(:yybbs, 'yybbs') do
     timeline :yybbs
   end
 
@@ -17,9 +17,9 @@ Plugin.create(:yybbs) do
       ancestor = result.last
 
       doc = URI.open("#{ancestor.server.uri}?res=#{ancestor.id}&bbs=1&pg=0", &Nokogiri::HTML.method(:parse))
-      _thread, *res = doc.at_css('div#main-in').css('.art').map { |art|
+      _thread, *res = doc.at_css('div#main-in').css('.art').map do |art|
         get_art_bbs1(art, ancestor.server)
-      }
+      end
       res.each do |r|
         r.thread = ancestor
       end
@@ -27,17 +27,17 @@ Plugin.create(:yybbs) do
     end
   end
 
-  defspell(:compose, :yybbs) do |world, body:, **opts|
+  defspell(:compose, :yybbs) do |world, body:, **_opts|
     doc = URI.open("#{world.server.uri}?bbs=0", &Nokogiri::HTML.method(:parse))
     str_crypt = doc.at_css('input[name="str_crypt"]').attribute('value').value
-    captcha_url = File.dirname(world.server.uri.to_s) + '/' + doc.at_css('img.capt').attribute('src').value.gsub(%r<\A./>, '')
+    captcha_url = "#{File.dirname(world.server.uri.to_s)}/#{doc.at_css('img.capt').attribute('src').value.gsub(%r<\A./>, '')}"
     captcha_photo = Plugin.filtering(:photo_filter, captcha_url, [])[1].first
 
     dialog('投稿') {
       label '以下の画像に表示されている数字を入力してください。'
       link captcha_photo
       input '画像認証', :captcha
-    }.next { |result|
+    }.next do |result|
       sub, comment = body.split("\n", 2)
       Net::HTTP.post_form(URI.parse("#{File.dirname(world.server.uri.to_s)}/regist.cgi"),
                           { mode: 'regist',
@@ -52,15 +52,14 @@ Plugin.create(:yybbs) do
                             pwd: world.password || '',
                             captcha: result[:captcha],
                             str_crypt: str_crypt,
-                            color: world.color || '0',
-                          })
-    }
+                            color: world.color || '0' })
+    end
   end
 
-  world_setting(:yybbs, "yybbs") do
+  world_setting(:yybbs, 'yybbs') do
     self[:url] = 'https://d250g2.com/yybbs/yybbs.cgi'
     self[:password] = SecureRandom.alphanumeric(rand(6..9))
-    label "BBSのURLを指定してください(yybbs.cgi まで入れてください)"
+    label 'BBSのURLを指定してください(yybbs.cgi まで入れてください)'
     input 'URL', :url
     url = await_input[:url]
     doc = URI.open("#{url}?mode=icon", &Nokogiri::HTML.method(:parse))
@@ -70,22 +69,22 @@ Plugin.create(:yybbs) do
 
     select('アイコン', :icon) do
       doc.css('#pop-icon img').each_with_index do |img, index|
-        #[img.attribute('src').value, img.parent.next_element.content]
-        icon_url = File.dirname(url) + '/' + img.attribute('src').value.gsub(%r<\A./>, '')
+        # [img.attribute('src').value, img.parent.next_element.content]
+        icon_url = "#{File.dirname(url)}/#{img.attribute('src').value.gsub(%r<\A./>, '')}"
         option([index, icon_url], img.parent.next_element.content)
       end
     end
 
     select('文字色', :color, {
-             "0" => "#800000",
-             "1" => "#df0000",
-             "2" => "#008040",
-             "3" => "#0000ff",
-             "4" => "#c100c1",
-             "5" => "#ff80c0",
-             "6" => "#ff8040",
-             "7" => "#000080",
-             "8" => "#808000",
+             '0' => '#800000',
+             '1' => '#df0000',
+             '2' => '#008040',
+             '3' => '#0000ff',
+             '4' => '#c100c1',
+             '5' => '#ff80c0',
+             '6' => '#ff8040',
+             '7' => '#000080',
+             '8' => '#808000'
            })
 
     result = await_input
@@ -104,7 +103,7 @@ Plugin.create(:yybbs) do
       label world.to_s
       world
     else
-      Deferred.next{ Deferred.fail('サーバに接続できませんでした') }
+      Deferred.next { Deferred.fail('サーバに接続できませんでした') }
     end
   end
 
@@ -113,9 +112,9 @@ Plugin.create(:yybbs) do
       doc = URI.open("#{server.uri}?bbs=0") do |io|
         Nokogiri::HTML.parse(io)
       end
-      doc.at_css('div.ta-c').css('.art').map { |art|
+      doc.at_css('div.ta-c').css('.art').map do |art|
         timeline(:yybbs) << get_art_bbs0(art, server)
-      }
+      end
     end
     Delayer.new(delay: 60) { polling }
   end
@@ -131,8 +130,8 @@ Plugin.create(:yybbs) do
           server: server,
           username: art.at_css('.art-info b').content,
           icon_path: icon_node&.attribute('src')&.value
-        }
-      })
+        } }
+    )
     result = [parent]
     art.css('.reslog').each do |res|
       icon_node = res.at_css('img.image')
@@ -146,28 +145,27 @@ Plugin.create(:yybbs) do
             server: server,
             username: res.at_css('.art-info b').content,
             icon_path: icon_node&.attribute('src')&.value
-          }
-        })
+          } }
+      )
     end
     result
   end
 
   def get_art_bbs1(art, server)
     icon_node = art.at_css('img.image')
-    parent = Plugin::YYBBS::Message.new(
+    Plugin::YYBBS::Message.new(
       { id: art.attribute('id').value.to_i,
         title: art.at_css('strong')&.content,
         body: art.at_css('span.num').next_element.at_css('span').content, # TODO: 改行考える
-        created: art.at_css('b')&.next&.content&.yield_self { |str|
+        created: art.at_css('b')&.next&.content&.yield_self do |str|
           Time.parse(str.match(%r<投稿日：(.+)\z>)[1])
-        },
+        end,
         user: {
           server: server,
           username: art.at_css('b').content,
           icon_path: icon_node&.attribute('src')&.value
-        }
-      })
-    parent
+        } }
+    )
   end
 
   Delayer.new(delay: 5) { polling }

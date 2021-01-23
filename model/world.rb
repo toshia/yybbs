@@ -2,7 +2,7 @@
 
 module Plugin::YYBBS
   class World < Diva::Model
-    register :yybbs, name: "YYBBS"
+    register :yybbs, name: 'YYBBS'
 
     field.string :slug, required: true
     field.string :name, required: true

@@ -2,7 +2,7 @@
 
 module Plugin::YYBBS
   class Server < Diva::Model
-    register :yybbs_server, name: "YYBBSサーバ"
+    register :yybbs_server, name: 'YYBBSサーバ'
 
     field.uri :uri, required: true
 

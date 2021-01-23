@@ -4,7 +4,7 @@ module Plugin::YYBBS
   class Message < Diva::Model
     include Diva::Model::MessageMixin
 
-    register :yybbs_message, name: "YY-BBS記事"
+    register :yybbs_message, name: 'YY-BBS記事'
 
     field.int :id, required: true
     field.has :user, Plugin::YYBBS::User, required: true
@@ -33,7 +33,7 @@ module Plugin::YYBBS
       !!thread
     end
 
-    def replyto_source_d(force = false)
+    def replyto_source_d(force=false)
       Delayer::Deferred.new do
         thread
       end

@@ -4,7 +4,7 @@ module Plugin::YYBBS
   class User < Diva::Model
     include Diva::Model::UserMixin
 
-    register :yybbs_user, name: "YY-BBSユーザ"
+    register :yybbs_user, name: 'YY-BBSユーザ'
 
     field.has :server, Plugin::YYBBS::Server, required: true
     field.string :username, required: true
@@ -15,7 +15,7 @@ module Plugin::YYBBS
     end
 
     def icon
-      url = File.dirname(server.uri.to_s) + '/' + icon_path.gsub(%r<\A./>, '')
+      url = "#{File.dirname(server.uri.to_s)}/#{icon_path.gsub(%r<\A./>, '')}"
       Plugin.filtering(:photo_filter, url, [])[1].first
     end
   end
