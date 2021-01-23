@@ -62,8 +62,8 @@ Plugin.create(:yybbs) do
   end
 
   def polling
-    Plugin.collect(:worlds).select { |w| w.class.slug == :yybbs }.map(&:server).uniq.each do |world|
-      doc = URI.open("#{world.server.uri}?bbs=0") do |io|
+    Plugin.collect(:worlds).select { |w| w.class.slug == :yybbs }.map(&:server).uniq.each do |server|
+      doc = URI.open("#{server.uri}?bbs=0") do |io|
         Nokogiri::HTML.parse(io)
       end
       doc.at_css('div.ta-c').css('.art').map { |x|
@@ -75,7 +75,7 @@ Plugin.create(:yybbs) do
         created = x.at_css('.art-info img[alt="time.png"]')&.next&.content&.yield_self(&Time.method(:parse))
         article_id = x.at_css('.art-info .num').content.match(/No.(\d+)/)&.[](1).to_i
         user = Plugin::YYBBS::User.new({
-                                         server: world.server,
+                                         server: server,
                                          username: author,
                                          icon_path: icon_url
                                        })
