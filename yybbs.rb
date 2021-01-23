@@ -11,6 +11,13 @@ Plugin.create(:yybbs) do
     timeline :yybbs
   end
 
+  defspell(:around_message, :yybbs_message) do |message|
+    pp 'pass!!!'
+    Thread.new do
+      result = [message, message.thread].compact
+    end
+  end
+
   world_setting(:yybbs, "yybbs") do
     self[:url] = 'https://d250g2.com/yybbs/yybbs.cgi'
     self[:password] = SecureRandom.alphanumeric(rand(6..9))

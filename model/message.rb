@@ -24,5 +24,9 @@ module Plugin::YYBBS
     def perma_link
       Diva::URI(server.uri.to_s + "?res=#{id}&bbs=1&pg=0")
     end
+
+    def repliable?
+      true
+    end
   end
 end
