@@ -10,6 +10,7 @@ Plugin.create(:yybbs) do
   tab(:yybbs, "yybbs") do
     timeline :yybbs
   end
+
   world_setting(:yybbs, "yybbs") do
     self[:url] = 'https://d250g2.com/yybbs/yybbs.cgi'
     self[:password] = SecureRandom.alphanumeric(rand(6..9))
@@ -67,25 +68,34 @@ Plugin.create(:yybbs) do
         Nokogiri::HTML.parse(io)
       end
       doc.at_css('div.ta-c').css('.art').map { |x|
-        title = x.at_css('strong')&.content
         icon_node = x.at_css('img.image')
-        icon_url = icon_node&.attribute('src')&.value
-        body = icon_node.next_element.content # TODO: 改行考える
-        author = x.at_css('.art-info b').content
-        created = x.at_css('.art-info img[alt="time.png"]')&.next&.content&.yield_self(&Time.method(:parse))
-        article_id = x.at_css('.art-info .num').content.match(/No.(\d+)/)&.[](1).to_i
-        user = Plugin::YYBBS::User.new({
-                                         server: server,
-                                         username: author,
-                                         icon_path: icon_url
-                                       })
-        timeline(:yybbs) << Plugin::YYBBS::Message.new(
-          { id: article_id,
-            title: title,
-            body: body,
-            created: created,
-            user: user
+        parent = Plugin::YYBBS::Message.new(
+          { id: x.at_css('.art-info .num').content.match(/No.(\d+)/)&.[](1).to_i,
+            title: x.at_css('strong')&.content,
+            body: icon_node.next_element.content, # TODO: 改行考える
+            created: x.at_css('.art-info img[alt="time.png"]')&.next&.content&.yield_self(&Time.method(:parse)),
+            user: {
+              server: server,
+              username: x.at_css('.art-info b').content,
+              icon_path: icon_node&.attribute('src')&.value
+            }
           })
+        x.css('.reslog').each do |res|
+          icon_node = res.at_css('img.image')
+          timeline(:yybbs) << Plugin::YYBBS::Message.new(
+            { id: res.at_css('.art-info .num').content.match(/No.(\d+)/)&.[](1).to_i,
+              title: res.at_css('strong')&.content,
+              body: icon_node.next_element.content, # TODO: 改行考える
+              created: res.at_css('.art-info img[alt="time.png"]')&.next&.content&.yield_self(&Time.method(:parse)),
+              thread: parent,
+              user: {
+                server: server,
+                username: res.at_css('.art-info b').content,
+                icon_path: icon_node&.attribute('src')&.value
+              }
+            })
+        end
+        timeline(:yybbs) << parent
       }
     end
     Delayer.new(delay: 60) { polling }

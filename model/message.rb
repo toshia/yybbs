@@ -8,6 +8,7 @@ module Plugin::YYBBS
 
     field.int :id, required: true
     field.has :user, Plugin::YYBBS::User, required: true
+    field.has :thread, Plugin::YYBBS::Message, required: false
     field.string :title, required: true
     field.string :body, required: true
     field.time :created, required: true
