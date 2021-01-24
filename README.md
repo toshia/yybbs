@@ -1,3 +1,5 @@
+Sorry this plugin is Japanese only.
+
 # なにこれ
 
 [YY\-BOARD : KENT\-WEB CGI/Perl フリーソフト](https://www.kent-web.com/bbs/yybbs.html) にて公開されているYY-BOARDの閲覧・投稿をmikutter上で行えるようにするプラグインです
