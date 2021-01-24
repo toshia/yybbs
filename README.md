@@ -56,14 +56,14 @@ mkdir -p ~/.mikutter/plugin/; git clone https://github.com/toshia/yybbs.git ~/.m
 
 当ホームページにリンクを貼るときは、以下の画像をダウンロードして使ってください。
 
-<img src="https://github.com/toshia/yybbs/raw/gazou/link-banner00-200x40.png" />
+<img src="https://github.com/toshia/yybbs/raw/gazou/link-banner00-200x40.gif" />
 
 ```html
-<a href="https://github.com/toshia/yybbs/"><img src="https://github.com/toshia/yybbs/raw/gazou/link-banner00-200x40.png" /></a>
+<a href="https://github.com/toshia/yybbs/" target="_blank"><img src="https://github.com/toshia/yybbs/raw/gazou/link-banner00-200x40.gif" width="200" height="40" /></a>
 ```
 
-<img src="https://github.com/toshia/yybbs/raw/gazou/link-banner00-88x31.png" />
+<img src="https://github.com/toshia/yybbs/raw/gazou/link-banner00-88x31.gif" />
 
 ```html
-<a href="https://github.com/toshia/yybbs/"><img src="https://github.com/toshia/yybbs/raw/gazou/link-banner00-88x31.png" /></a>
+<a href="https://github.com/toshia/yybbs/" target="_blank"><img src="https://github.com/toshia/yybbs/raw/gazou/link-banner00-88x31.gif" width="88" height="31" /></a>
 ```
