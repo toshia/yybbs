@@ -7,6 +7,27 @@ require_relative 'model/message'
 require 'nokogiri'
 
 Plugin.create(:yybbs) do
+  BIG_DATA = { 198 =>
+          { 33 => [0],
+            115 => [1],
+            214 => [2],
+            165 => [3],
+            255 => [4],
+            66 => [5, 8],
+            16 => [6],
+            132 => [7],
+            74 => [9] },
+               648 =>
+          { 33 => [0],
+            0 => [1, 2],
+            198 => [3],
+            132 => [4],
+            107 => [5],
+            74 => [6],
+            16 => [7],
+            41 => [8],
+            66 => [9] } }.freeze
+
   tab(:yybbs, 'yybbs') do
     timeline :yybbs
   end
@@ -186,13 +207,39 @@ Plugin.create(:yybbs) do
 
   # captcha_photo に書いてある数字を読み取って、Stringで取得するDeferredを返す
   def verify_captcha(captcha_photo)
-    dialog('投稿') {
-      label '以下の画像に表示されている数字を入力してください。'
-      link captcha_photo
-      input '画像認証', :captcha
-    }.next do |r|
-      r[:captcha]
+    captcha_photo.download_pixbuf(width: 15 * 6, height: 20).next do |example|
+      forecast = (example.width / 15).times.map { |i|
+        deep_learning(example.subpixbuf(15 * i, 0, 15, 20))
+      }.to_a.join
+      if forecast.include?('?')
+        dialog('投稿') {
+          self[:captcha] = forecast
+          label '以下の画像に表示されている数字を入力してください。'
+          link captcha_photo
+          input '画像認証', :captcha
+        }.next do |r|
+          r[:captcha]
+        end
+      else
+        forecast
+      end
     end
+  end
+
+  def deep_learning(o)
+    forecasts = BIG_DATA.map { |pindex, map|
+      map[point_color(o, *pindex_to_xyrgb(pindex))]
+    }.inject(&:&)
+    return forecasts.first if forecasts.size == 1
+    '?'
+  end
+
+  def pindex_to_xyrgb(pindex)
+    [pindex % (15 * 3) / 3, pindex / (15 * 3), pindex % 3]
+  end
+
+  def point_color(pb, x, y, rgb)
+    pb.pixels[y * pb.rowstride + x * pb.n_channels + rgb]
   end
 
   # [String str_crypt, Photo captcha_photo]
