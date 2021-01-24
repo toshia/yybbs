@@ -63,7 +63,6 @@ Plugin.create(:yybbs) do
       }
       res = +Thread.new { Net::HTTP.post_form(URI.parse("#{File.dirname(world.server.uri.to_s)}/regist.cgi"), request).tap(&:body) }
       post_error_check(request, res, message)
-      res
     end
   end
 
@@ -270,8 +269,8 @@ Plugin.create(:yybbs) do
           POSTパラメータ:
           #{param_str}
         EOM
+        Delayer::Deferred.fail res
       end
-      Delayer::Deferred.fail res
     else
       param_str = request.map { |k, v| "#{k}: #{v}" }.join("\n")
       activity :error, 'レス投稿時に接続エラーが発生しました', description: <<~EOM, children: message&.ancestors
