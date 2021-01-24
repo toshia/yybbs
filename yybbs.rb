@@ -34,6 +34,47 @@ Plugin.create(:yybbs) do
     }
   }.freeze
 
+  defevent :yybbs_servers, prototype: [Pluggaloid::COLLECT]
+  defevent :yybbs_appear, prototype: [Pluggaloid::STREAM]
+
+  subscribe(:yybbs_appear).each(&timeline(:yybbs).method(:<<))
+
+  subscribe(:yybbs_servers__add).each do |server|
+    generate(:yybbs_appear, tags: [tag_of(server)]) do |input|
+      Delayer::Deferred.new {
+        loop do
+          doc = +Thread.new {
+            URI.open("#{server.uri}?bbs=0", &Nokogiri::HTML.method(:parse))
+          }
+          doc.at_css('div.ta-c').css('.art').map do |art|
+            input.bulk_add(get_art_bbs0(art, server))
+          end
+          +Delayer::Deferred.sleep(60)
+        end
+      }.trap do |err|
+        Delayer.new { raise err }
+      end
+    end
+  end
+
+  subscribe(:yybbs_servers__delete).each do |server|
+    detach(tag_of(server))
+  end
+
+  collection(:yybbs_servers) do |mutation|
+    subscribe(:worlds__add) do |worlds|
+      mutation.rewind do |servers|
+        servers | worlds.select { |w| w.class.slug == :yybbs }.map(&:server).uniq
+      end
+    end
+
+    subscribe(:worlds__delete).each do |_|
+      mutation.rewind do |_servers|
+        Plugin.collect(:worlds).select { |w| w.class.slug == :yybbs }.map(&:server).uniq
+      end
+    end
+  end
+
   tab(:yybbs, 'yybbs') do
     timeline :yybbs
   end
@@ -141,18 +182,6 @@ Plugin.create(:yybbs) do
     else
       Deferred.next { Deferred.fail('サーバに接続できませんでした') }
     end
-  end
-
-  def polling
-    Plugin.collect(:worlds).select { |w| w.class.slug == :yybbs }.map(&:server).uniq.each do |server|
-      doc = URI.open("#{server.uri}?bbs=0") do |io|
-        Nokogiri::HTML.parse(io)
-      end
-      doc.at_css('div.ta-c').css('.art').map do |art|
-        timeline(:yybbs) << get_art_bbs0(art, server)
-      end
-    end
-    Delayer.new(delay: 60) { polling }
   end
 
   def get_art_bbs0(art, server)
@@ -293,5 +322,8 @@ Plugin.create(:yybbs) do
     res
   end
 
-  Delayer.new(delay: 5) { polling }
+  @tags = {}                    # world_hash => handler_tag
+  def tag_of(world_or_server)
+    @tags[world_or_server.hash] ||= handler_tag()
+  end
 end
