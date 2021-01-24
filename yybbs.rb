@@ -13,46 +13,56 @@ Plugin.create(:yybbs) do
 
   defspell(:around_message, :yybbs_message) do |message|
     Thread.new do
-      result = [message, message.thread].compact
-      ancestor = result.last
+      thread = message.ancestor
 
-      doc = URI.open("#{ancestor.server.uri}?res=#{ancestor.id}&bbs=1&pg=0", &Nokogiri::HTML.method(:parse))
+      doc = URI.open("#{thread.server.uri}?res=#{thread.id}&bbs=1&pg=0", &Nokogiri::HTML.method(:parse))
       _thread, *res = doc.at_css('div#main-in').css('.art').map do |art|
-        get_art_bbs1(art, ancestor.server)
+        get_art_bbs1(art, thread.server)
       end
       res.each do |r|
-        r.thread = ancestor
+        r.thread = thread
       end
-      [ancestor, *res]
+      [thread, *res]
+    end
+  end
+
+  defspell(:compose, :yybbs, :yybbs_message) do |world, message, body:, **_opts|
+    get_regist_token(world).next { |str_crypt, captcha_photo|
+      [str_crypt, +verify_captcha(captcha_photo)]
+    }.next do |str_crypt, captcha|
+      request = {
+        **world.gen_regist_payload,
+        mode: 'regist',
+        reno: message.ancestor.id,
+        bbs: '0',
+        sub: "Re: #{message.ancestor.title}".yield_self { |x| x.size > 15 ? "#{x[0..14]}…" : x },
+        comment: body,
+        captcha: captcha,
+        str_crypt: str_crypt
+      }
+      res = +Thread.new { Net::HTTP.post_form(URI.parse("#{File.dirname(world.server.uri.to_s)}/regist.cgi"), request).tap(&:body) }
+      post_error_check(request, res, message)
+      res
     end
   end
 
   defspell(:compose, :yybbs) do |world, body:, **_opts|
-    doc = URI.open("#{world.server.uri}?bbs=0", &Nokogiri::HTML.method(:parse))
-    str_crypt = doc.at_css('input[name="str_crypt"]').attribute('value').value
-    captcha_url = "#{File.dirname(world.server.uri.to_s)}/#{doc.at_css('img.capt').attribute('src').value.gsub(%r<\A./>, '')}"
-    captcha_photo = Plugin.filtering(:photo_filter, captcha_url, [])[1].first
-
-    dialog('投稿') {
-      label '以下の画像に表示されている数字を入力してください。'
-      link captcha_photo
-      input '画像認証', :captcha
-    }.next do |result|
+    get_regist_token(world).next { |str_crypt, captcha_photo|
+      [str_crypt, +verify_captcha(captcha_photo)]
+    }.next do |str_crypt, captcha|
       sub, comment = body.split("\n", 2)
-      Net::HTTP.post_form(URI.parse("#{File.dirname(world.server.uri.to_s)}/regist.cgi"),
-                          { mode: 'regist',
-                            reno: '',
-                            bbs: '0',
-                            name: world.name || '',
-                            email: '',
-                            sub: sub,
-                            comment: comment,
-                            url: '',
-                            icon: world.icon_index || '0',
-                            pwd: world.password || '',
-                            captcha: result[:captcha],
-                            str_crypt: str_crypt,
-                            color: world.color || '0' })
+      request = {
+        **world.gen_regist_payload,
+        mode: 'regist',
+        reno: '',
+        bbs: '0',
+        sub: sub,
+        comment: comment,
+        captcha: captcha,
+        str_crypt: str_crypt
+      }
+      res = +Thread.new { Net::HTTP.post_form(URI.parse("#{File.dirname(world.server.uri.to_s)}/regist.cgi"), request).tap(&:body) }
+      post_error_check(request, res)
     end
   end
 
@@ -121,12 +131,14 @@ Plugin.create(:yybbs) do
 
   def get_art_bbs0(art, server)
     icon_node = art.at_css('img.image')
+    id = art.at_css('.art-info .num').content.match(/No.(\d+)/)&.[](1).to_i
     parent = Plugin::YYBBS::Message.new(
-      { id: art.at_css('.art-info .num').content.match(/No.(\d+)/)&.[](1).to_i,
+      { id: id,
         title: art.at_css('strong')&.content,
         body: icon_node.next_element.content, # TODO: 改行考える
         created: art.at_css('.art-info img[alt="time.png"]')&.next&.content&.yield_self(&Time.method(:parse)),
         user: {
+          post_number: id,
           server: server,
           username: art.at_css('.art-info b').content,
           icon_path: icon_node&.attribute('src')&.value
@@ -135,13 +147,15 @@ Plugin.create(:yybbs) do
     result = [parent]
     art.css('.reslog').each do |res|
       icon_node = res.at_css('img.image')
+      id = res.at_css('.art-info .num').content.match(/No.(\d+)/)&.[](1).to_i
       result << Plugin::YYBBS::Message.new(
-        { id: res.at_css('.art-info .num').content.match(/No.(\d+)/)&.[](1).to_i,
+        { id: id,
           title: res.at_css('strong')&.content,
           body: icon_node.next_element.content, # TODO: 改行考える
           created: res.at_css('.art-info img[alt="time.png"]')&.next&.content&.yield_self(&Time.method(:parse)),
           thread: parent,
           user: {
+            post_number: id,
             server: server,
             username: res.at_css('.art-info b').content,
             icon_path: icon_node&.attribute('src')&.value
@@ -153,19 +167,78 @@ Plugin.create(:yybbs) do
 
   def get_art_bbs1(art, server)
     icon_node = art.at_css('img.image')
+    id = art.attribute('id').value.to_i
     Plugin::YYBBS::Message.new(
-      { id: art.attribute('id').value.to_i,
+      { id: id,
         title: art.at_css('strong')&.content,
         body: art.at_css('span.num').next_element.at_css('span').content, # TODO: 改行考える
         created: art.at_css('b')&.next&.content&.yield_self do |str|
           Time.parse(str.match(%r<投稿日：(.+)\z>)[1])
         end,
         user: {
+          post_number: id,
           server: server,
           username: art.at_css('b').content,
           icon_path: icon_node&.attribute('src')&.value
         } }
     )
+  end
+
+  # captcha_photo に書いてある数字を読み取って、Stringで取得するDeferredを返す
+  def verify_captcha(captcha_photo)
+    dialog('投稿') {
+      label '以下の画像に表示されている数字を入力してください。'
+      link captcha_photo
+      input '画像認証', :captcha
+    }.next do |r|
+      r[:captcha]
+    end
+  end
+
+  # [String str_crypt, Photo captcha_photo]
+  def get_regist_token(world)
+    Thread.new do
+      doc = URI.open("#{world.server.uri}?bbs=0", &Nokogiri::HTML.method(:parse))
+      captcha_url = "#{File.dirname(world.server.uri.to_s)}/#{doc.at_css('img.capt').attribute('src').value.gsub(%r<\A./>, '')}"
+      [
+        doc.at_css('input[name="str_crypt"]').attribute('value').value.freeze,
+        Plugin.filtering(:photo_filter, captcha_url, [])[1].first
+      ].freeze
+    end
+  end
+
+  def post_error_check(request, res, message=nil)
+    case res
+    when Net::HTTPSuccess
+      doc = Nokogiri::HTML.parse(res.body)
+      if doc.at_css('title').content == 'ERROR!'
+        param_str = request.map { |k, v| "#{k}: #{v}" }.join("\n")
+        activity :error, 'レス投稿時にエラーが発生しました', description: <<~EOM, children: message&.ancestors
+          レス投稿時にエラーが発生しました。
+
+          対称スレ: #{message&.ancestor&.perma_link || 'なし'}
+          エラー:
+          #{doc.at_css('#reg-area').content}
+
+          POSTパラメータ:
+          #{param_str}
+        EOM
+      end
+      Delayer::Deferred.fail res
+    else
+      param_str = request.map { |k, v| "#{k}: #{v}" }.join("\n")
+      activity :error, 'レス投稿時に接続エラーが発生しました', description: <<~EOM, children: message&.ancestors
+        レス投稿時にエラーが発生しました。
+
+        対称スレ: #{message&.ancestor&.perma_link || 'なし'}
+        エラー: #{res.code} #{res.message}
+
+        POSTパラメータ:
+        #{param_str}
+      EOM
+      Delayer::Deferred.fail res
+    end
+    res
   end
 
   Delayer.new(delay: 5) { polling }

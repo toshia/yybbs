@@ -20,6 +20,17 @@ module Plugin::YYBBS
       Skin[:post]
     end
 
+    def gen_regist_payload
+      {
+        name: name,
+        email: '',
+        url: '',
+        icon: icon_index || '0',
+        pwd: password || '',
+        color: color || '0'
+      }
+    end
+
     # def icon
     #   url = File.dirname(server.url.to_s) + '/' + icon_path.gsub(%r<\A./>, '')
     #   Plugin.filtering(:photo_filter, url, [])[1].first

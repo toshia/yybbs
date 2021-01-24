@@ -9,9 +9,14 @@ module Plugin::YYBBS
     field.has :server, Plugin::YYBBS::Server, required: true
     field.string :username, required: true
     field.string :icon_path, required: true
+    field.int :post_number, required: true
 
     def name
       "#{username}@#{server.uri}"
+    end
+
+    def idname
+      ">>#{post_number}"
     end
 
     def icon

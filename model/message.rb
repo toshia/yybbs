@@ -38,5 +38,13 @@ module Plugin::YYBBS
         thread
       end
     end
+
+    def ancestor
+      thread || self
+    end
+
+    def ancestors
+      [self, thread].compact
+    end
   end
 end
