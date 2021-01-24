@@ -51,3 +51,19 @@ mkdir -p ~/.mikutter/plugin/; git clone https://github.com/toshia/yybbs.git ~/.m
 # リンク集
 
 - **[d250g2掲示板](https://d250g2.com/yybbs/yybbs.cgi)** :: いつもお世話になってます！掲示板が賑わっていて、とっても楽しいホームページです！
+
+# 相互リンクについて
+
+当ホームページにリンクを貼るときは、以下の画像をダウンロードして使ってください。
+
+<img src="https://github.com/toshia/yybbs/raw/gazou/link-banner00-200x40.png" />
+
+```html
+<a href="https://github.com/toshia/yybbs/"><img src="https://github.com/toshia/yybbs/raw/gazou/link-banner00-200x40.png" /></a>
+```
+
+<img src="https://github.com/toshia/yybbs/raw/gazou/link-banner00-88x31.png" />
+
+```html
+<a href="https://github.com/toshia/yybbs/"><img src="https://github.com/toshia/yybbs/raw/gazou/link-banner00-88x31.png" /></a>
+```
