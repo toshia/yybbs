@@ -43,17 +43,21 @@ Plugin.create(:yybbs) do
     generate(:yybbs_appear, tags: [tag_of(server)]) do |input|
       Delayer::Deferred.new {
         loop do
-          doc = +Thread.new {
-            URI.open("#{server.uri}?bbs=0", &Nokogiri::HTML.method(:parse))
-          }
-          doc.at_css('div.ta-c').css('.art').map do |art|
-            input.bulk_add(get_art_bbs0(art, server))
-          end
+          input.bulk_add(async_fetch_bbs0(server))
           +Delayer::Deferred.sleep(60)
         end
       }.trap do |err|
         Delayer.new { raise err }
       end
+    end
+  end
+
+  def async_fetch_bbs0(server)
+    doc = +Thread.new {
+      URI.open("#{server.uri}?bbs=0", &Nokogiri::HTML.method(:parse))
+    }
+    doc.at_css('div.ta-c').css('.art').flat_map do |art|
+      get_art_bbs0(art, server)
     end
   end
 
@@ -109,7 +113,7 @@ Plugin.create(:yybbs) do
         str_crypt: str_crypt
       }
       res = +Thread.new { Net::HTTP.post_form(URI.parse("#{File.dirname(world.server.uri.to_s)}/regist.cgi"), request).tap(&:body) }
-      post_error_check(request, res, message)
+      post_error_check(request, res, message).tap { Plugin.call(:yybbs_appear, async_fetch_bbs0(world.server)) }
     end
   end
 
@@ -129,7 +133,7 @@ Plugin.create(:yybbs) do
         str_crypt: str_crypt
       }
       res = +Thread.new { Net::HTTP.post_form(URI.parse("#{File.dirname(world.server.uri.to_s)}/regist.cgi"), request).tap(&:body) }
-      post_error_check(request, res)
+      post_error_check(request, res).tap { Plugin.call(:yybbs_appear, async_fetch_bbs0(world.server)) }
     end
   end
 
@@ -324,6 +328,6 @@ Plugin.create(:yybbs) do
 
   @tags = {}                    # world_hash => handler_tag
   def tag_of(world_or_server)
-    @tags[world_or_server.hash] ||= handler_tag()
+    @tags[world_or_server.hash] ||= handler_tag
   end
 end
