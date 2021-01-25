@@ -107,7 +107,7 @@ Plugin.create(:yybbs) do
         mode: 'regist',
         reno: message.ancestor.id,
         bbs: '0',
-        sub: "Re: #{message.ancestor.title}".yield_self { |x| x.size > 15 ? "#{x[0..14]}…" : x },
+        sub: "Re: #{message.ancestor.title}".yield_self { |x| x.size > 15 ? "#{x[0, 14]}…" : x },
         comment: body,
         captcha: captcha,
         str_crypt: str_crypt
